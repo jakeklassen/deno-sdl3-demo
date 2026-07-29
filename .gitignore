@@ -1,0 +1,3 @@
+# Built by `mise run setup-sdl` — see scripts/build-sdl3.sh
+/sdl3/
+/.sdl3-build/

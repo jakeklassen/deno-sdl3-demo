@@ -1,0 +1,20 @@
+[tools]
+deno = "2.9.4"
+cmake = "4.4.0"
+ninja = "1.13.2"
+
+[env]
+# sdl3-deno finds ./sdl3 on its own, but setting this explicitly makes the demo
+# runnable from any working directory.
+DENO_SDL3_PATH = "{{config_root}}/sdl3"
+
+[tasks.setup-sdl]
+description = "Build SDL3 + SDL3_image + SDL3_ttf from source into ./sdl3"
+run = "./scripts/build-sdl3.sh"
+sources = ["scripts/build-sdl3.sh"]
+outputs = ["sdl3/libSDL3.so", "sdl3/libSDL3_image.so", "sdl3/libSDL3_ttf.so"]
+
+[tasks.movement]
+description = "Run the movement demo"
+depends = ["setup-sdl"]
+run = "deno run -A src/movement.ts"
