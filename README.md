@@ -182,9 +182,15 @@ only change needed was the `RESIZABLE` window flag. Measured:
 | 700x500     | 3     | 384x384 centred at 158,58 |
 | 1000x300    | 2     | 256x256 centred          |
 
-`SDL_RenderClear` ignores the logical viewport, so the bars are painted with the
-clear colour (black) rather than left undefined — verified by reading back the
-full framebuffer at 700x500.
+`SDL_RenderClear` ignores the logical viewport and covers the whole output, so
+the bars take the clear colour rather than being left undefined — verified by
+reading back the full framebuffer at 700x500.
+
+That is also how the bars get their own colour. The frame clears everything to
+`SURROUND` (`rgb(24, 24, 32)` — off black, slightly blue) and then fills the
+128x128 play area with true black on top. Without this the bars and the game
+background were both black and the viewport edge was invisible when scaled up.
+Change `SURROUND` in `src/movement.ts` to taste.
 
 A minimum window size of 128x128 stops the scale factor reaching zero, since
 there is no valid whole multiple below 1x.

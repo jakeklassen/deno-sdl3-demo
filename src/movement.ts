@@ -55,6 +55,13 @@ const dt = STEP / 1000;
  */
 const SPEED = Number(Deno.env.get("SPEED") ?? 60);
 
+/**
+ * Colour of the letterbox bars around the play area. Slightly lifted off black,
+ * and a touch blue, so the viewport edge is readable against the game's black
+ * background without competing with the art for attention.
+ */
+const SURROUND = { r: 24, g: 24, b: 32 };
+
 using _sdl = new SdlContext();
 using _ttf = new TtfContext();
 
@@ -246,8 +253,15 @@ function frame() {
     dtAccumulator -= STEP;
   }
 
-  render.setDrawColor(0, 0, 0, 255);
+  // `clear` ignores the logical viewport and covers the whole output, so it
+  // paints the letterbox bars. Painting the play area black on top of that is
+  // what makes the viewport edge visible when the window is not a whole
+  // multiple of the game size — otherwise bars and background are both black.
+  render.setDrawColor(SURROUND.r, SURROUND.g, SURROUND.b, 255);
   render.clear();
+
+  render.setDrawColor(0, 0, 0, 255);
+  render.fillRect({ x: 0, y: 0, w: GAME_WIDTH, h: GAME_HEIGHT });
 
   const titleSize = title.size;
   title.drawRenderer(Math.floor(GAME_WIDTH / 2 - titleSize.w / 2), 3);
