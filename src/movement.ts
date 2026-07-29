@@ -19,6 +19,13 @@ import {
 } from "@sdl3/sdl3-deno";
 import { Font, RendererTextEngine, TtfContext } from "@sdl3/sdl3-deno/ttf";
 import * as TTF from "@sdl3/sdl3-deno/TTF";
+import { fromFileUrl } from "@std/path";
+
+/** SDL takes native filesystem paths, so resolve assets off this module rather
+ * than the working directory. Keeps `mise run` working from any subdirectory,
+ * and yields a drive-letter path on Windows. */
+const asset = (name: string) =>
+  fromFileUrl(new URL(`../assets/${name}`, import.meta.url));
 
 const GAME_WIDTH = 128;
 const GAME_HEIGHT = 128;
@@ -48,7 +55,7 @@ render.setDefaultTextureScaleMode(SDL.SCALEMODE.NEAREST);
 
 const playerTexturePointer = IMG.loadTexture(
   render.pointer,
-  "assets/image/player-ship.png",
+  asset("image/player-ship.png"),
 );
 
 if (playerTexturePointer === null) {
@@ -60,7 +67,7 @@ playerTexture.setScaleMode(SDL.SCALEMODE.NEAREST);
 
 const sprite = playerTexture.size;
 
-using font = Font.open("assets/fonts/pico-8.ttf", 5);
+using font = Font.open(asset("fonts/pico-8.ttf"), 5);
 // PICO-8's font is a pixel font, so keep the rasteriser from smoothing stems.
 font.setHinting(TTF.HINTING.MONO);
 

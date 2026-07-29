@@ -4,6 +4,7 @@
   },
   "imports": {
     "@sdl3/sdl3-deno": "jsr:@sdl3/sdl3-deno@^2.2.0",
-    "@sdl3/sdl3-deno/": "jsr:/@sdl3/sdl3-deno@^2.2.0/"
+    "@sdl3/sdl3-deno/": "jsr:/@sdl3/sdl3-deno@^2.2.0/",
+    "@std/path": "jsr:@std/path@^1.1.2"
   }
 }

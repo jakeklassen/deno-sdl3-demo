@@ -1,0 +1,7 @@
+# Keep the shell script LF even when checked out on Windows with autocrlf on —
+# CRLF breaks the shebang under WSL, Git Bash and macOS.
+*.sh text eol=lf
+*.ps1 text eol=crlf
+
+*.png binary
+*.ttf binary

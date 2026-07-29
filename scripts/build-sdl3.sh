@@ -77,6 +77,10 @@ build SDL_ttf \
 
 cp -aP "$PREFIX"/lib/libSDL3*.so* "$OUT"/
 
+# Single cross-platform marker for mise's `outputs` staleness check; the real
+# artifact names differ per platform (libSDL3.so / .dylib / SDL3.dll).
+touch "$OUT/.setup-complete"
+
 echo
 echo "==> Installed into $OUT:"
 ls -1 "$OUT"

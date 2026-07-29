@@ -44,7 +44,8 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@sdl3/sdl3-deno@^2.2.0"
+      "jsr:@sdl3/sdl3-deno@^2.2.0",
+      "jsr:@std/path@^1.1.2"
     ]
   }
 }

@@ -9,17 +9,28 @@ Deno + SDL3 via [`@sdl3/sdl3-deno`](https://jsr.io/@sdl3/sdl3-deno), with the
 mise run movement
 ```
 
-The first run builds SDL3 into `./sdl3` (a few minutes); after that it just
-launches the demo. Arrow keys move both ships, Escape quits.
+The first run provisions SDL3 into `./sdl3` — seconds on Windows, a few minutes
+on Linux/macOS where it compiles. After that it just launches the demo. Arrow
+keys move both ships, Escape quits.
+
+Prerequisites are mise and a C toolchain **on Linux/macOS only** (cmake and ninja
+come from mise; a system compiler and the X11/freetype/harfbuzz dev headers do
+not). On Windows all you need is mise — see below.
 
 ## How SDL3 is managed
 
-mise has no `sdl` in its registry, libsdl-org publishes no prebuilt Linux
-binaries (only win32/dmg/mingw/android), and Ubuntu 24.04 has no `libsdl3`
-package — SDL3 landed in Ubuntu 25.04. So SDL3 is not a `[tools]` entry.
+mise has no `sdl` in its registry, so SDL3 is not a `[tools]` entry. Instead
+`mise run setup-sdl` provisions it into `./sdl3`, which is already one of
+sdl3-deno's default search paths. How it does that depends on the platform,
+because libsdl-org only ships prebuilt binaries for some of them:
 
-Instead `mise run setup-sdl` builds it from pinned upstream release tags via
-`scripts/build-sdl3.sh`:
+| Platform    | What `setup-sdl` does                                          |
+| ----------- | -------------------------------------------------------------- |
+| Windows     | Downloads the official `win32-x64` DLLs — no compiler needed     |
+| Linux/macOS | Builds from source via `scripts/build-sdl3.sh`                   |
+
+mise's `run_windows` key selects between them, so the command is the same
+everywhere. Both paths use identical pinned versions:
 
 | Library    | Tag              |
 | ---------- | ---------------- |
@@ -27,15 +38,31 @@ Instead `mise run setup-sdl` builds it from pinned upstream release tags via
 | SDL_image  | `release-3.4.4`  |
 | SDL_ttf    | `release-3.2.2`  |
 
-Sources are cloned into `.sdl3-build/` and the resulting shared libraries land in
-`./sdl3`, which is already one of sdl3-deno's default search paths. mise also
-exports `DENO_SDL3_PATH` so the demo runs from any working directory, and the
-task's `sources`/`outputs` keys mean the build is skipped once it is up to date.
+Downloads and sources are staged in `.sdl3-build/`, and the libraries land in
+`./sdl3`. sdl3-deno resolves the platform-correct filename itself — `SDL3.dll` on
+Windows, `libSDL3.so` on Linux, `libSDL3.dylib` on macOS — so the same directory
+works everywhere. mise also exports `DENO_SDL3_PATH` so the demo runs from any
+working directory.
+
+The task's `sources`/`outputs` keys skip the work once it is current. `outputs`
+points at a `sdl3/.setup-complete` stamp rather than the libraries themselves,
+because mise does not expand globs there and the real filenames are
+platform-specific.
 
 Both `sdl3/` and `.sdl3-build/` are gitignored — a fresh clone runs one command
 to reproduce them.
 
-### Build notes
+### Windows notes
+
+Nothing to compile: `scripts/setup-sdl3.ps1` pulls the official runtime zips and
+copies the DLLs out, picking `x64`/`arm64`/`x86` from `PROCESSOR_ARCHITECTURE`.
+The `cmake` and `ninja` entries in `[tools]` are only used by the Unix build; on
+Windows mise installs them but nothing invokes them.
+
+`.gitattributes` pins `*.sh` to LF so `build-sdl3.sh` still works if the repo is
+checked out on Windows with `core.autocrlf` enabled and later used from WSL.
+
+### Linux/macOS build notes
 
 - The libraries are linked with an `$ORIGIN` RPATH, so `libSDL3_image` and
   `libSDL3_ttf` find `libSDL3.so` beside them without `LD_LIBRARY_PATH`.

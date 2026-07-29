@@ -1,5 +1,6 @@
 [tools]
 deno = "2.9.4"
+# Only used by the Linux/macOS source build; Windows downloads prebuilt DLLs.
 cmake = "4.4.0"
 ninja = "1.13.2"
 
@@ -9,10 +10,14 @@ ninja = "1.13.2"
 DENO_SDL3_PATH = "{{config_root}}/sdl3"
 
 [tasks.setup-sdl]
-description = "Build SDL3 + SDL3_image + SDL3_ttf from source into ./sdl3"
+description = "Provision SDL3 + SDL3_image + SDL3_ttf into ./sdl3"
+# Linux/macOS build from source; Windows downloads the official prebuilt DLLs.
 run = "./scripts/build-sdl3.sh"
-sources = ["scripts/build-sdl3.sh"]
-outputs = ["sdl3/libSDL3.so", "sdl3/libSDL3_image.so", "sdl3/libSDL3_ttf.so"]
+run_windows = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-sdl3.ps1"
+sources = ["scripts/build-sdl3.sh", "scripts/setup-sdl3.ps1"]
+# A stamp file rather than the libraries themselves: mise does not expand globs
+# here, and the real artifact names differ per platform (.so / .dylib / .dll).
+outputs = ["sdl3/.setup-complete"]
 
 [tasks.movement]
 description = "Run the movement demo"
