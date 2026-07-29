@@ -166,6 +166,29 @@ Measured under WSL2 + X410, a 120 target holds at 120.3 fps (p50 8.27 ms, p95
   alternative *if* you have a high-refresh display and want tear-free output
   locked to it.
 
+### Resizing
+
+The window is resizable and scales the way retro titles do: only in whole
+multiples, with the leftover margin left as bars rather than stretching the art.
+
+`INTEGER_SCALE` logical presentation does all of it — SDL picks
+`min(floor(outputW / 128), floor(outputH / 128))` and centres the result, so the
+only change needed was the `RESIZABLE` window flag. Measured:
+
+| Window size | Scale | Content                  |
+| ----------- | ----- | ------------------------ |
+| 512x512     | 4     | 512x512, exact fit       |
+| 640x640     | 5     | 640x640, exact fit       |
+| 700x500     | 3     | 384x384 centred at 158,58 |
+| 1000x300    | 2     | 256x256 centred          |
+
+`SDL_RenderClear` ignores the logical viewport, so the bars are painted with the
+clear colour (black) rather than left undefined — verified by reading back the
+full framebuffer at 700x500.
+
+A minimum window size of 128x128 stops the scale factor reaching zero, since
+there is no valid whole multiple below 1x.
+
 ### Window size and DPI
 
 The window is `128 * scale` square, where `scale` is `4` multiplied by the

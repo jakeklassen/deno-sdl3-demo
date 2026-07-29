@@ -73,16 +73,24 @@ using windowAndRenderer = Render.createWindowAndRenderer(
   "SDL3 Movement",
   GAME_WIDTH * scale,
   GAME_HEIGHT * scale,
-  0n,
+  BigInt(SDL.WINDOW.RESIZABLE),
 );
-const { render } = windowAndRenderer;
+const { render, window } = windowAndRenderer;
 
+// INTEGER_SCALE is what makes resizing behave like a retro title: SDL picks
+// min(floor(outW / 128), floor(outH / 128)) and centres the result, so the game
+// only ever grows in whole multiples and the leftover margin is left as bars
+// rather than stretching or blurring the art.
 render.setLogicalPresentation(
   GAME_WIDTH,
   GAME_HEIGHT,
   SDL.LOGICAL_PRESENTATION.INTEGER_SCALE,
 );
 render.setDefaultTextureScaleMode(SDL.SCALEMODE.NEAREST);
+
+// Below one whole multiple there is nothing valid to scale to, so stop the
+// window shrinking past 1x rather than letting the factor reach zero.
+window.setMinimumSize(GAME_WIDTH, GAME_HEIGHT);
 
 const playerTexturePointer = IMG.loadTexture(
   render.pointer,
