@@ -32,8 +32,18 @@ const GAME_WIDTH = 128;
 const GAME_HEIGHT = 128;
 const BASE_SCALE = 4;
 
-const TARGET_FPS = 60;
-const STEP = 1000 / TARGET_FPS;
+/** How often we present a frame. */
+const RENDER_FPS = 120;
+
+/**
+ * How often the simulation advances. Velocities are per-second and the
+ * accumulator below always applies a fixed `dt`, so movement speed is identical
+ * at any value here — only the smoothness of motion changes. Kept equal to
+ * RENDER_FPS: with no interpolation between simulation states, a lower tick rate
+ * would quantise motion to that rate no matter how fast we render.
+ */
+const SIM_HZ = RENDER_FPS;
+const STEP = 1000 / SIM_HZ;
 const dt = STEP / 1000;
 
 using _sdl = new SdlContext();
@@ -86,6 +96,26 @@ font.setHinting(TTF.HINTING.MONO);
 using textEngine = RendererTextEngine.create(render.pointer);
 using title = textEngine.createText(font, "Movement");
 title.setColor({ r: 255, g: 255, b: 255, a: 255 });
+
+// Opt-in so the demo looks like the original by default. Run with SHOW_FPS=1 to
+// confirm the frame rate actually holds on a given machine.
+const showFps = Deno.env.get("SHOW_FPS") === "1";
+using fpsText = textEngine.createText(font, "");
+fpsText.setColor({ r: 255, g: 236, b: 39, a: 255 });
+
+let fpsFrames = 0;
+let fpsLastSample = performance.now();
+
+function drawFps(now: number) {
+  fpsFrames++;
+  if (now - fpsLastSample >= 500) {
+    const fps = (fpsFrames * 1000) / (now - fpsLastSample);
+    fpsText.setString(`${Math.round(fps)}`);
+    fpsFrames = 0;
+    fpsLastSample = now;
+  }
+  fpsText.drawRenderer(2, 2);
+}
 
 function createPlayer(yOffset: number) {
   return {
@@ -187,6 +217,10 @@ function frame() {
   const titleSize = title.size;
   title.drawRenderer(Math.floor(GAME_WIDTH / 2 - titleSize.w / 2), 3);
 
+  if (showFps) {
+    drawFps(hrt);
+  }
+
   // player1 snaps to whole pixels while player2 keeps its sub-pixel position,
   // exactly as in the original demo.
   render.texture(playerTexture, null, {
@@ -205,7 +239,7 @@ function frame() {
   render.present();
 }
 
-for await (const event of Event.iter(STEP, frame)) {
+for await (const event of Event.iter(1000 / RENDER_FPS, frame)) {
   if (event.type === EventType.QUIT) {
     break;
   }

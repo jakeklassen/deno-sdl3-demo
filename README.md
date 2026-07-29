@@ -98,6 +98,35 @@ coordinates stay in game space and SDL scales to the 512x512 window by whole
 pixels. As in the original, `player1` snaps to integer pixels while `player2`
 keeps its sub-pixel position, so you can see the difference while moving.
 
+### Frame rate
+
+`RENDER_FPS` in `src/movement.ts` sets the pacing (currently 120); `SIM_HZ` sets
+how often the simulation advances. They are separate knobs, but `SIM_HZ` tracks
+`RENDER_FPS` on purpose — nothing interpolates between simulation states, so a
+lower tick rate would quantise motion to that rate however fast we render.
+
+Velocities are per-second and the accumulator applies a fixed `dt`, so changing
+either constant does not change how fast the ships move — only how smooth it
+looks, and how well motion survives a frame spike.
+
+Run with `SHOW_FPS=1` to overlay the measured rate:
+
+```sh
+SHOW_FPS=1 mise run movement
+```
+
+Measured under WSL2 + X410, a 120 target holds at 120.3 fps (p50 8.27 ms, p95
+9.59 ms); 240 starts falling short at ~224. Two caveats:
+
+- **Your monitor caps what you actually see.** On a 60 Hz display, rendering at
+  120 just does twice the work for the same visible result, and without vsync it
+  can tear.
+- **Vsync is not the answer under WSL2.** X410 reports `refresh_rate: 0`, and
+  enabling vsync there collapsed the loop to 32.5 fps. On native Windows the
+  refresh rate is reported properly, so `render.setVSync(1)` is a reasonable
+  alternative *if* you have a high-refresh display and want tear-free output
+  locked to it.
+
 ### Window size and DPI
 
 The window is `128 * scale` square, where `scale` is `4` multiplied by the
