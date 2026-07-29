@@ -9,6 +9,7 @@
  * Arrow keys move both ships, Escape quits.
  */
 import {
+  Display,
   Event,
   EventType,
   IMG,
@@ -29,7 +30,7 @@ const asset = (name: string) =>
 
 const GAME_WIDTH = 128;
 const GAME_HEIGHT = 128;
-const SCALE = 4;
+const BASE_SCALE = 4;
 
 const TARGET_FPS = 60;
 const STEP = 1000 / TARGET_FPS;
@@ -38,10 +39,21 @@ const dt = STEP / 1000;
 using _sdl = new SdlContext();
 using _ttf = new TtfContext();
 
+// SDL3 is per-monitor DPI aware, so a window request is in *physical* pixels and
+// comes out small on a scaled desktop. Non-DPI-aware X servers (X410 under WSL2)
+// report 1.0 here and let Windows bitmap-stretch the result instead, which is
+// why the same numbers looked bigger — but blurrier — there. Folding the desktop
+// scale in ourselves matches that size natively while staying pixel-exact.
+// Rounded so the 128x128 grid keeps landing on whole pixels.
+const scale = Math.max(
+  1,
+  Math.round(BASE_SCALE * (Display.primary.contentScale || 1)),
+);
+
 using windowAndRenderer = Render.createWindowAndRenderer(
   "SDL3 Movement",
-  GAME_WIDTH * SCALE,
-  GAME_HEIGHT * SCALE,
+  GAME_WIDTH * scale,
+  GAME_HEIGHT * scale,
   0n,
 );
 const { render } = windowAndRenderer;

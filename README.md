@@ -98,6 +98,21 @@ coordinates stay in game space and SDL scales to the 512x512 window by whole
 pixels. As in the original, `player1` snaps to integer pixels while `player2`
 keeps its sub-pixel position, so you can see the difference while moving.
 
+### Window size and DPI
+
+The window is `128 * scale` square, where `scale` is `4` multiplied by the
+desktop's content scale and rounded to an integer — so it stays a whole-pixel
+multiple of the 128x128 grid and `INTEGER_SCALE` never has to letterbox.
+
+This exists because SDL3 is per-monitor DPI aware: a 512x512 request is 512
+*physical* pixels, which looks small on a scaled desktop. A non-DPI-aware X
+server such as X410 under WSL2 reports a content scale of 1.0 and lets Windows
+bitmap-stretch the result instead, so the same numbers produced a larger but
+slightly blurrier window there. Scaling ourselves matches that physical size on
+native Windows while keeping every pixel exact.
+
+Bump `BASE_SCALE` in `src/movement.ts` if you just want it bigger everywhere.
+
 ## Upstream audit
 
 `@sdl3/sdl3-deno` was reviewed before use. It is 298 files of TypeScript with no
