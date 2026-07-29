@@ -36,15 +36,24 @@ const BASE_SCALE = 4;
 const RENDER_FPS = 120;
 
 /**
- * How often the simulation advances. Velocities are per-second and the
- * accumulator below always applies a fixed `dt`, so movement speed is identical
- * at any value here — only the smoothness of motion changes. Kept equal to
- * RENDER_FPS: with no interpolation between simulation states, a lower tick rate
- * would quantise motion to that rate no matter how fast we render.
+ * How often the simulation advances. Deliberately lower than RENDER_FPS: the
+ * renderer interpolates between the previous and current simulation states, so
+ * motion stays smooth at the render rate without simulating that often.
+ * Velocities are per-second and the accumulator applies a fixed `dt`, so this
+ * does not affect how fast anything moves.
  */
-const SIM_HZ = RENDER_FPS;
+const SIM_HZ = 60;
 const STEP = 1000 / SIM_HZ;
 const dt = STEP / 1000;
+
+/**
+ * Movement speed in game pixels per second. The original demo's 60 happens to be
+ * exactly one game pixel per simulation tick, which flatters the naive ship; the
+ * sub-pixel technique separates from it most clearly at low speeds. Override with
+ * `SPEED=12` to see the difference the way the pixel-art-smoother-movement demo
+ * shows it.
+ */
+const SPEED = Number(Deno.env.get("SPEED") ?? 60);
 
 using _sdl = new SdlContext();
 using _ttf = new TtfContext();
@@ -117,7 +126,16 @@ function drawFps(now: number) {
   fpsText.drawRenderer(2, 2);
 }
 
-function createPlayer(yOffset: number) {
+/**
+ * @param smooth When true the sprite is drawn at its interpolated sub-pixel
+ * position, letting SDL land it on an exact device pixel. When false it is
+ * snapped to the 128x128 game grid first, which is what makes slow movement
+ * visibly jitter — the two ships exist to show that difference side by side.
+ */
+function createPlayer(yOffset: number, smooth: boolean) {
+  const x = Math.floor(GAME_WIDTH / 2 - sprite.w / 2);
+  const y = Math.floor(GAME_HEIGHT / 2 - sprite.h / 2) + yOffset;
+
   return {
     boxCollider: {
       offsetX: 0,
@@ -125,17 +143,21 @@ function createPlayer(yOffset: number) {
       width: sprite.w,
       height: sprite.h,
     },
-    x: Math.floor(GAME_WIDTH / 2 - sprite.w / 2),
-    y: Math.floor(GAME_HEIGHT / 2 - sprite.h / 2) + yOffset,
+    x,
+    y,
+    // Simulation state from the previous tick, so rendering can interpolate.
+    prevX: x,
+    prevY: y,
     dx: 0,
     dy: 0,
-    vx: 60,
-    vy: 60,
+    vx: SPEED,
+    vy: SPEED,
+    smooth,
   };
 }
 
-const player1 = createPlayer(-8);
-const player2 = createPlayer(8);
+const player1 = createPlayer(-8, false);
+const player2 = createPlayer(8, true);
 const players = [player1, player2];
 
 const input = {
@@ -173,6 +195,11 @@ function frame() {
 
   while (dtAccumulator >= STEP) {
     for (const player of players) {
+      // Captured per step rather than per frame, so after a frame that runs
+      // several steps this still holds the state immediately before the last.
+      player.prevX = player.x;
+      player.prevY = player.y;
+
       player.dx = 0;
       player.dy = 0;
 
@@ -221,20 +248,24 @@ function frame() {
     drawFps(hrt);
   }
 
-  // player1 snaps to whole pixels while player2 keeps its sub-pixel position,
-  // exactly as in the original demo.
-  render.texture(playerTexture, null, {
-    x: player1.x | 0,
-    y: player1.y | 0,
-    w: sprite.w,
-    h: sprite.h,
-  });
-  render.texture(playerTexture, null, {
-    x: player2.x,
-    y: player2.y,
-    w: sprite.w,
-    h: sprite.h,
-  });
+  // How far we are between the last simulation tick and the next one.
+  const alpha = dtAccumulator / STEP;
+
+  for (const player of players) {
+    const x = player.prevX + (player.x - player.prevX) * alpha;
+    const y = player.prevY + (player.y - player.prevY) * alpha;
+
+    // Logical presentation multiplies these by the render scale, so a fractional
+    // logical coordinate resolves to an exact device pixel — measured: a quarter
+    // of a game pixel moves the sprite exactly one physical pixel at 4x. That is
+    // the whole trick: game-pixel art, device-pixel movement granularity.
+    render.texture(playerTexture, null, {
+      x: player.smooth ? x : x | 0,
+      y: player.smooth ? y : y | 0,
+      w: sprite.w,
+      h: sprite.h,
+    });
+  }
 
   render.present();
 }

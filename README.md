@@ -95,15 +95,54 @@ backend:
 Rather than emulating the Canvas 2D API, drawing goes straight through SDL3's
 renderer. Logical presentation replaces the manual 128x128 buffer entirely: all
 coordinates stay in game space and SDL scales to the 512x512 window by whole
-pixels. As in the original, `player1` snaps to integer pixels while `player2`
-keeps its sub-pixel position, so you can see the difference while moving.
+pixels. The original's `player1`-snaps / `player2`-sub-pixel contrast is kept and
+built on — see below.
+
+### Smooth pixel-art movement
+
+The demo uses the technique from `~/code/gamedev/pixel-art-smoother-movement`:
+keep the *art* at game resolution but give *movement* the granularity of the
+upscaled surface, so slow motion does not jitter in whole game pixels.
+
+SDL3 supplies half of it for free. `setLogicalPresentation` multiplies logical
+coordinates by the render scale, so a fractional logical position resolves to an
+exact device pixel — measured at 4x, a quarter of a game pixel moves the sprite
+exactly one physical pixel (left edge at device px 88, 89, 90, 91 for logical
+20.0, 20.25, 20.5, 20.75). That is the equivalent of the repo's 512x512 canvas;
+no manual render target is needed.
+
+The other half is render interpolation, which is implemented here. Each player
+keeps `prevX`/`prevY` from the previous simulation tick, and the renderer draws
+at `prev + (cur - prev) * alpha` where `alpha` is how far the accumulator sits
+between ticks. `prev` is captured per *step* rather than per frame, so a frame
+that runs several steps still interpolates from the state right before the last.
+
+This is what lets `SIM_HZ` (60) sit below `RENDER_FPS` (120) without motion
+quantising to the simulation rate.
+
+The two ships demonstrate the difference, standing in for the repo's two
+canvases: **player1 snaps to the 128x128 game grid**, **player2 draws at its
+interpolated sub-pixel position**. Device pixels moved per frame:
+
+| Speed          | player1 (snapped) | player2 (sub-pixel) |
+| -------------- | ----------------- | ------------------- |
+| `SPEED=60`     | 0 or 4            | 0 or 2              |
+| `SPEED=12`     | 0 or 4            | 0 or 1              |
+
+The default 60 px/s is exactly one game pixel per 60 Hz tick, which flatters the
+snapped ship. The technique separates most clearly when movement is slower than
+one game pixel per tick:
+
+```sh
+SPEED=12 mise run movement
+```
 
 ### Frame rate
 
 `RENDER_FPS` in `src/movement.ts` sets the pacing (currently 120); `SIM_HZ` sets
-how often the simulation advances. They are separate knobs, but `SIM_HZ` tracks
-`RENDER_FPS` on purpose — nothing interpolates between simulation states, so a
-lower tick rate would quantise motion to that rate however fast we render.
+how often the simulation advances (60). They are genuinely decoupled — see
+[Smooth pixel-art movement](#smooth-pixel-art-movement) — because the renderer
+interpolates between simulation states.
 
 Velocities are per-second and the accumulator applies a fixed `dt`, so changing
 either constant does not change how fast the ships move — only how smooth it
